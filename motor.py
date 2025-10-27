@@ -2,11 +2,12 @@ import numpy as np
 
 PI = np.pi
 copper_resistivity = 1.68E-8
+copper_density = 8960  # kg/m^3
 dt = 1.0E-5
 mu0 = 4E-7 * PI
 
 class Motor:
-    def __init__(self, n_turns, n_coils, length, B, inertia_moment, input_voltage, wire_diameter):
+    def __init__(self, n_turns, n_coils, length, B, inertia_moment, input_voltage, wire_diameter, stall=False):
         self.n_turns = n_turns
         self.n_coils = n_coils
         self.length = length  # length of one side of a square coil
@@ -14,6 +15,7 @@ class Motor:
         self.inertia_moment = inertia_moment
         self.input_voltage = input_voltage
         self.wire_diameter = wire_diameter
+        self.stall = stall
 
         # derived properties
         self.coil_area = length ** 2
@@ -22,7 +24,9 @@ class Motor:
         self.wire_cross_section_area = PI * ((self.wire_diameter / 2) ** 2)
         self.coil_resistance = copper_resistivity * self.coil_wire_length / self.wire_cross_section_area
         self.B_mag = np.linalg.norm(self.B)
-        self.inductance = (self.n_turns ** 2) * mu0 * self.length / PI * np.log(4 * self.length / self.wire_diameter)
+
+        # https://learnemc.com/ext/calculators/inductance/square.html
+        self.inductance = (self.n_turns ** 2) * 2 * mu0 * self.length / PI * (np.log(2 * self.length / self.wire_diameter) - 0.774)
 
         # state variables
         self.theta = 0
@@ -34,6 +38,10 @@ class Motor:
         self.torque = 0
         self.power = 0
         self.efficiency = 0
+
+        # max values
+        self.max_torque = 0
+        self.max_current = 0
 
         if dt > self.inductance / self.coil_resistance:
             print("dt > L/R time constant; simulation may be unstable")
@@ -67,12 +75,19 @@ class Motor:
         friction_torque = 0.1 # 1E-4 * self.omega
         self.torque = max(0, 2 * r * force_on_coil * active_torque_factor - friction_torque)
 
-        alpha = self.torque / self.inertia_moment
+        # update max variables
+        self.max_torque = max(self.torque, self.max_torque)
+        self.max_current = max(self.current, self.max_current)
+
+        # rotational kinematics
+        stall_factor = int(not self.stall)  # 0 acceleration if True; normal acceleration if False
+        alpha = self.torque / self.inertia_moment * stall_factor
         self.omega += alpha * dt
         self.theta += self.omega * dt
 
         self.t += dt
 
+        # power and efficiency calculations
         power_in = self.current * self.input_voltage  # electrical input power
         self.power = self.torque * self.omega  # mechanical output power
         if abs(self.current) < 0.01:  # prevent division by 0
