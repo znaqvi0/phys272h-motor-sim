@@ -2,7 +2,7 @@ import numpy as np
 
 PI = np.pi
 copper_resistivity = 1.68E-8
-dt = 1.0E-3
+dt = 1.0E-5
 mu0 = 4E-7 * PI
 
 class Motor:
@@ -17,27 +17,47 @@ class Motor:
 
         self.theta = 0
         self.coil_area = length ** 2
-        self.angle_between_coils = 2 * PI / self.n_coils
-        self.phi_max = np.linalg.norm(self.B * self.coil_area)
+        self.angle_between_coils = PI / self.n_coils
         self.coil_wire_length = self.n_turns * 4 * length  # for a square coil
         self.wire_cross_section_area = PI * ((self.wire_diameter / 2) ** 2)
         self.coil_resistance = copper_resistivity * self.coil_wire_length / self.wire_cross_section_area
+        self.B_mag = np.linalg.norm(self.B)
 
         self.omega = 0
         self.t = 0
+        self.current = 0
+        self.inductance = (self.n_turns ** 2) * mu0 * self.length / PI * np.log(4 * self.length / self.wire_diameter)
+
+        if dt > self.inductance / self.coil_resistance:
+            print("dt > L/R time constant; simulation may be unstable")
+
 
     def step(self):
-        back_emf = self.back_emf()
-        current = (self.input_voltage + back_emf) / self.coil_resistance
+        coil_angles = [self.theta + self.angle_between_coils * i for i in range(self.n_coils)]
 
-        length_vector = self.length * np.array((-1, 0, 0))
-        force_on_coil = self.n_turns * current * np.cross(length_vector, self.B)
+        # active back emf is the max of all possible back emfs (for an ideal commutator)
+        back_emf_factors = [abs(np.sin(angle)) for angle in coil_angles]
+        active_back_emf_factor = max(back_emf_factors)
+        back_emf = self.n_turns * self.B_mag * self.coil_area * self.omega * active_back_emf_factor
 
-        current_coil_angle = self.theta % self.angle_between_coils
-        r_vector = (self.length / 2) * np.array((0, np.cos(current_coil_angle), np.sin(current_coil_angle)))
+        # from loop rule: V_in - back_emf - IR - L * dI/dt = 0
+        # V_net = IR = V_in - back_emf - L * dI/dt
+        net_emf = self.input_voltage - back_emf - (self.current * self.coil_resistance)
 
-        torque_vector = 2 * np.cross(r_vector, force_on_coil)
-        torque = np.dot(torque_vector, np.array((-1, 0, 0)))  #np.linalg.norm(torque_vector)
+        # solve loop rule equation for dI/dt
+        current_rate_of_change = net_emf / self.inductance
+
+        self.current += current_rate_of_change * dt
+        self.current = max(0, self.current)
+
+        force_on_coil = self.n_turns * self.current * self.length * self.B_mag  # F = N * ILB
+
+        # active torque is the max of all possible torques (for an ideal commutator)
+        torque_factors = [abs(np.cos(angle)) for angle in coil_angles]
+        active_torque_factor = max(torque_factors)
+        r = self.length / 2
+
+        torque = 2 * r * force_on_coil * active_torque_factor
 
         alpha = torque / self.inertia_moment
         self.omega += alpha * dt
@@ -45,8 +65,3 @@ class Motor:
 
         self.t += dt
         return torque
-
-    def back_emf(self):
-        dphi_dt = np.linalg.norm(self.B) * self.coil_area * self.omega * np.sin(self.theta)
-        return -self.n_turns * dphi_dt
-
