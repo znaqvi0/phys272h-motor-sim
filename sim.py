@@ -13,17 +13,23 @@ wire_diameter = 0.5E-3  # approximate diameter of 24 gauge wire
 torques = []
 times = []
 omegas = []
+powers = []
+efficiencies = []
+angles = []
 
 motor = Motor(n_turns=n_turns, n_coils=n_coils, length=length, B=B, inertia_moment=inertia_moment, input_voltage=input_voltage, wire_diameter=wire_diameter)
 
 for i in range(int(2/dt)):
-    torque = motor.step()
-    torques.append(torque)
+    motor.step()
+    torques.append(motor.torque)
     omegas.append(motor.omega)
     times.append(motor.t)
+    powers.append(motor.power)
+    efficiencies.append(motor.efficiency)
+    angles.append(motor.theta)
 
 print("final speed: %.2f rad/s" % motor.omega)
-plt.plot(times, torques)
+plt.plot(omegas, torques)
 plt.xlabel('time (s)')
 plt.ylabel('torque (Nm)')
 plt.title('torque vs time')

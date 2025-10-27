@@ -15,18 +15,25 @@ class Motor:
         self.input_voltage = input_voltage
         self.wire_diameter = wire_diameter
 
-        self.theta = 0
+        # derived properties
         self.coil_area = length ** 2
         self.angle_between_coils = PI / self.n_coils
         self.coil_wire_length = self.n_turns * 4 * length  # for a square coil
         self.wire_cross_section_area = PI * ((self.wire_diameter / 2) ** 2)
         self.coil_resistance = copper_resistivity * self.coil_wire_length / self.wire_cross_section_area
         self.B_mag = np.linalg.norm(self.B)
+        self.inductance = (self.n_turns ** 2) * mu0 * self.length / PI * np.log(4 * self.length / self.wire_diameter)
 
+        # state variables
+        self.theta = 0
         self.omega = 0
         self.t = 0
         self.current = 0
-        self.inductance = (self.n_turns ** 2) * mu0 * self.length / PI * np.log(4 * self.length / self.wire_diameter)
+
+        # power curve variables
+        self.torque = 0
+        self.power = 0
+        self.efficiency = 0
 
         if dt > self.inductance / self.coil_resistance:
             print("dt > L/R time constant; simulation may be unstable")
@@ -57,11 +64,18 @@ class Motor:
         active_torque_factor = max(torque_factors)
         r = self.length / 2
 
-        torque = 2 * r * force_on_coil * active_torque_factor
+        friction_torque = 0.1 # 1E-4 * self.omega
+        self.torque = max(0, 2 * r * force_on_coil * active_torque_factor - friction_torque)
 
-        alpha = torque / self.inertia_moment
+        alpha = self.torque / self.inertia_moment
         self.omega += alpha * dt
         self.theta += self.omega * dt
 
         self.t += dt
-        return torque
+
+        power_in = self.current * self.input_voltage  # electrical input power
+        self.power = self.torque * self.omega  # mechanical output power
+        if abs(self.current) < 0.01:  # prevent division by 0
+            self.efficiency = 0
+        else:
+            self.efficiency = self.power / power_in
