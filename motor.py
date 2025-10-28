@@ -43,8 +43,11 @@ class Motor:
         self.max_torque = 0
         self.max_current = 0
 
-        if dt > self.inductance / self.coil_resistance:
+        rl_time_constant = self.inductance / self.coil_resistance
+        if dt > rl_time_constant:
             print("dt > L/R time constant; simulation may be unstable")
+
+        print("L/R time constant: %.4f" % rl_time_constant)
 
 
     def step(self):

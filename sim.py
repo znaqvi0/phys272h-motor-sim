@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from motor import *
 
 awg_to_diameter = {  # AWG to approximate diameter in meters
+    8: 3.2E-3,
     12: 2E-3,
     18: 1E-3,
     24: 0.5E-3
@@ -14,11 +15,12 @@ length = 0.1
 B = np.array((0, 1, 0)) * 1.0  # 0.5 T magnetic field in the +y direction
 inertia_moment = 0.5 * 0.1 * 0.2**2  # moment of 0.1 kg disk of radius 20cm
 input_voltage = 12
-wire_diameter = awg_to_diameter[18]  # approximate diameter of 18 gauge wire
+wire_diameter = awg_to_diameter[18]
 
 wire_cross_section_area = PI * ((wire_diameter / 2) ** 2)
 copper_volume = 4 * length * n_turns * n_coils * wire_cross_section_area
 copper_mass = copper_volume * copper_density
+
 print("copper mass: %.3f kg" % copper_mass)
 print("copper volume: %.3f cm^3" % (copper_volume * 1E6))
 
@@ -30,7 +32,7 @@ efficiencies = []
 angles = []
 currents = []
 
-motor = Motor(n_turns=n_turns, n_coils=n_coils, length=length, B=B, inertia_moment=inertia_moment, input_voltage=input_voltage, wire_diameter=wire_diameter, stall=True)
+motor = Motor(n_turns=n_turns, n_coils=n_coils, length=length, B=B, inertia_moment=inertia_moment, input_voltage=input_voltage, wire_diameter=wire_diameter, stall=False)
 
 sample_rate = 1
 for i in range(int(2/dt)):
