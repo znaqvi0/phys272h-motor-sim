@@ -28,6 +28,10 @@ class Motor:
         # https://learnemc.com/ext/calculators/inductance/square.html
         self.inductance = (self.n_turns ** 2) * 2 * mu0 * self.length / PI * (np.log(2 * self.length / self.wire_diameter) - 0.774)
 
+        self.radius = self.length / 2
+        self.stall_current = self.input_voltage / self.coil_resistance
+        self.stall_torque = 2 * self.radius * self.n_turns * self.stall_current * self.length * self.B_mag  # = 2*R*N*ILB
+
         # state variables
         self.theta = 0
         self.omega = 0
@@ -59,11 +63,11 @@ class Motor:
         back_emf = self.n_turns * self.B_mag * self.coil_area * self.omega * active_back_emf_factor
 
         # from loop rule: V_in - back_emf - IR - L * dI/dt = 0
-        # V_net = IR = V_in - back_emf - L * dI/dt
-        net_emf = self.input_voltage - back_emf - (self.current * self.coil_resistance)
+        # L * dI/dt = V_in - back_emf - L * dI/dt
+        inductor_emf = self.input_voltage - back_emf - (self.current * self.coil_resistance)
 
         # solve loop rule equation for dI/dt
-        current_rate_of_change = net_emf / self.inductance
+        current_rate_of_change = inductor_emf / self.inductance
 
         self.current += current_rate_of_change * dt
         self.current = max(0, self.current)
@@ -73,10 +77,9 @@ class Motor:
         # active torque is the max of all possible torques (for an ideal commutator)
         torque_factors = [abs(np.cos(angle)) for angle in coil_angles]
         active_torque_factor = max(torque_factors)
-        r = self.length / 2
 
         friction_torque = 0.1 # 1E-4 * self.omega
-        self.torque = max(0, 2 * r * force_on_coil * active_torque_factor - friction_torque)
+        self.torque = max(0, 2 * self.radius * force_on_coil * active_torque_factor - friction_torque)
 
         # update max variables
         self.max_torque = max(self.torque, self.max_torque)
