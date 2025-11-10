@@ -7,7 +7,7 @@ dt = 1.0E-5
 mu0 = 4E-7 * PI
 
 class Motor:
-    def __init__(self, n_turns, n_coils, length, B, inertia_moment, input_voltage, wire_diameter, stall=False):
+    def __init__(self, n_turns, n_coils, length, B, inertia_moment, input_voltage, wire_diameter, friction_torque, stall=False):
         self.n_turns = n_turns
         self.n_coils = n_coils
         self.length = length  # length of one side of a square coil
@@ -15,6 +15,7 @@ class Motor:
         self.inertia_moment = inertia_moment
         self.input_voltage = input_voltage
         self.wire_diameter = wire_diameter
+        self.friction_torque = friction_torque
         self.stall = stall
 
         # derived properties
@@ -78,8 +79,7 @@ class Motor:
         torque_factors = [abs(np.cos(angle)) for angle in coil_angles]
         active_torque_factor = max(torque_factors)
 
-        friction_torque = 0.1 # 1E-4 * self.omega
-        self.torque = max(0, 2 * self.radius * force_on_coil * active_torque_factor - friction_torque)
+        self.torque = max(0, 2 * self.radius * force_on_coil * active_torque_factor - self.friction_torque)
 
         # update max variables
         self.max_torque = max(self.torque, self.max_torque)

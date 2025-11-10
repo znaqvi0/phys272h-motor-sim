@@ -9,7 +9,7 @@ awg_to_diameter = {  # AWG to approximate diameter in meters
     24: 0.5E-3
 }
 
-n_turns = 10
+n_turns = 12
 n_coils = 8
 length = 0.1
 B = np.array((0, 1, 0)) * 1.0  # 1 T magnetic field in the +y direction
@@ -32,7 +32,7 @@ efficiencies = []
 angles = []
 currents = []
 
-motor = Motor(n_turns=n_turns, n_coils=n_coils, length=length, B=B, inertia_moment=inertia_moment, input_voltage=input_voltage, wire_diameter=wire_diameter, stall=False)
+motor = Motor(n_turns=n_turns, n_coils=n_coils, length=length, B=B, inertia_moment=inertia_moment, input_voltage=input_voltage, wire_diameter=wire_diameter, friction_torque=0.1, stall=False)
 
 sample_rate = 1
 for i in range(int(2/dt)):
@@ -50,6 +50,8 @@ for i in range(int(2/dt)):
 print("final speed: %.2f rad/s" % motor.omega)
 print("max torque: %.2f Nm" % motor.max_torque)
 print("max current: %.2f A" % motor.max_current)
+print("stall torque: %.2f Nm" % motor.stall_torque)
+print("stall current: %.2f A" % motor.stall_current)
 
 # torque and power
 ax1 = plt.gca()
