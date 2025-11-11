@@ -13,9 +13,9 @@ n_turns = 12
 n_coils = 8
 length = 0.1
 B = np.array((0, 1, 0)) * 1.0  # 1 T magnetic field in the +y direction
-inertia_moment = 0.5 * 0.1 * 0.2**2  # moment of 0.1 kg disk of radius 20cm
+inertia_moment = 0.5 * 2 * 0.2**2  # moment of 2 kg disk of radius 20cm
 input_voltage = 12
-wire_diameter = awg_to_diameter[18]
+wire_diameter = awg_to_diameter[24]
 
 wire_cross_section_area = PI * ((wire_diameter / 2) ** 2)
 copper_volume = 4 * length * n_turns * n_coils * wire_cross_section_area

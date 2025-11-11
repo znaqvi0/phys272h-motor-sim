@@ -21,23 +21,30 @@ class Motor:
         # derived properties
         self.coil_area = length ** 2
         self.angle_between_coils = PI / self.n_coils
+
         self.coil_wire_length = self.n_turns * 4 * length  # for a square coil
         self.wire_cross_section_area = PI * ((self.wire_diameter / 2) ** 2)
         self.coil_resistance = copper_resistivity * self.coil_wire_length / self.wire_cross_section_area
+
+        self.motor_resistance = n_coils / 4 * self.coil_resistance  # R = N/4 * R_coil in a motor with 2 parallel paths
+
+        self.active_turns = (n_coils / 2) * n_turns
+
         self.B_mag = np.linalg.norm(self.B)
 
         # https://learnemc.com/ext/calculators/inductance/square.html
-        self.inductance = (self.n_turns ** 2) * 2 * mu0 * self.length / PI * (np.log(2 * self.length / self.wire_diameter) - 0.774)
+        # self.inductance = (self.n_turns ** 2) * 2 * mu0 * self.length / PI * (np.log(2 * self.length / self.wire_diameter) - 0.774)
+        self.inductance = 0.005 * self.motor_resistance  # assume time constant and work backwards to inductance
 
         self.radius = self.length / 2
-        self.stall_current = self.input_voltage / self.coil_resistance
-        self.stall_torque = 2 * self.radius * self.n_turns * self.stall_current * self.length * self.B_mag  # = 2*R*N*ILB
+        self.stall_current = self.input_voltage / self.motor_resistance
+        self.stall_torque = 2 * self.radius * self.active_turns * self.stall_current * self.length * self.B_mag  # = 2*R*N*ILB
 
         # state variables
         self.theta = 0
         self.omega = 0
         self.t = 0
-        self.current = 0
+        self.current = 0 * input_voltage / self.motor_resistance
 
         # power curve variables
         self.torque = 0
@@ -48,7 +55,7 @@ class Motor:
         self.max_torque = 0
         self.max_current = 0
 
-        rl_time_constant = self.inductance / self.coil_resistance
+        rl_time_constant = self.inductance / self.motor_resistance
         if dt > rl_time_constant:
             print("dt > L/R time constant; simulation may be unstable")
 
@@ -61,11 +68,11 @@ class Motor:
         # active back emf is the max of all possible back emfs (for an ideal commutator)
         back_emf_factors = [abs(np.sin(angle)) for angle in coil_angles]
         active_back_emf_factor = max(back_emf_factors)
-        back_emf = self.n_turns * self.B_mag * self.coil_area * self.omega * active_back_emf_factor
+        back_emf = self.active_turns * self.B_mag * self.coil_area * self.omega * active_back_emf_factor
 
         # from loop rule: V_in - back_emf - IR - L * dI/dt = 0
         # L * dI/dt = V_in - back_emf - L * dI/dt
-        inductor_emf = self.input_voltage - back_emf - (self.current * self.coil_resistance)
+        inductor_emf = self.input_voltage - back_emf - (self.current * self.motor_resistance)
 
         # solve loop rule equation for dI/dt
         current_rate_of_change = inductor_emf / self.inductance
@@ -73,7 +80,7 @@ class Motor:
         self.current += current_rate_of_change * dt
         self.current = max(0, self.current)
 
-        force_on_coil = self.n_turns * self.current * self.length * self.B_mag  # F = N * ILB
+        force_on_coil = self.active_turns * self.current * self.length * self.B_mag  # F = N * ILB
 
         # active torque is the max of all possible torques (for an ideal commutator)
         torque_factors = [abs(np.cos(angle)) for angle in coil_angles]
