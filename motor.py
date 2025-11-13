@@ -28,7 +28,7 @@ class Motor:
 
         self.motor_resistance = n_coils / 4 * self.coil_resistance  # R = N/4 * R_coil in a motor with 2 parallel paths
 
-        self.active_turns = (n_coils / 2) * n_turns
+        self.active_coils = -(-n_coils // 2)  # ceiling division of N/2 for a motor with 2 parallel paths
 
         self.B_mag = np.linalg.norm(self.B)
 
@@ -38,7 +38,6 @@ class Motor:
 
         self.radius = self.length / 2
         self.stall_current = self.input_voltage / self.motor_resistance
-        self.stall_torque = 2 * self.radius * self.active_turns * self.stall_current * self.length * self.B_mag  # = 2*R*N*ILB
 
         # state variables
         self.theta = 0
@@ -55,23 +54,32 @@ class Motor:
         self.max_torque = 0
         self.max_current = 0
 
+        torque_factors = [abs(np.cos(angle)) for angle in self.active_coil_angles()]
+        self.stall_torque = self.n_turns * self.stall_current * self.coil_area * self.B_mag * sum(torque_factors)
+        # tau = mu * B cos(theta) = NIABcos(theta)
+
         rl_time_constant = self.inductance / self.motor_resistance
         if dt > rl_time_constant:
             print("dt > L/R time constant; simulation may be unstable")
 
         print("L/R time constant: %.4f" % rl_time_constant)
 
+    def active_coil_angles(self) -> list:
+        coil_angles = [self.theta + self.angle_between_coils * i for i in range(self.n_coils)]
+        coil_angles = sorted(coil_angles, key=lambda angle: abs(np.cos(angle)), reverse=True)  # sort in descending order by torque factor
+        return coil_angles[0:self.active_coils]
 
     def step(self):
+        # active_coil_angles = self.active_coil_angles()
         coil_angles = [self.theta + self.angle_between_coils * i for i in range(self.n_coils)]
 
-        # active back emf is the max of all possible back emfs (for an ideal commutator)
-        back_emf_factors = [abs(np.sin(angle)) for angle in coil_angles]
-        active_back_emf_factor = max(back_emf_factors)
-        back_emf = self.active_turns * self.B_mag * self.coil_area * self.omega * active_back_emf_factor
+        # back emf is the sum of active back emfs
+        back_emf_factors = [abs(np.cos(angle)) for angle in coil_angles]
+        back_emf_factors = sorted(back_emf_factors, reverse=True)[0:self.active_coils]
+        back_emf = self.n_turns * self.B_mag * self.coil_area * self.omega * sum(back_emf_factors)
 
         # from loop rule: V_in - back_emf - IR - L * dI/dt = 0
-        # L * dI/dt = V_in - back_emf - L * dI/dt
+        # L * dI/dt = V_in - back_emf - IR
         inductor_emf = self.input_voltage - back_emf - (self.current * self.motor_resistance)
 
         # solve loop rule equation for dI/dt
@@ -80,13 +88,12 @@ class Motor:
         self.current += current_rate_of_change * dt
         self.current = max(0, self.current)
 
-        force_on_coil = self.active_turns * self.current * self.length * self.B_mag  # F = N * ILB
 
-        # active torque is the max of all possible torques (for an ideal commutator)
+        # torque is the sum of active torques
         torque_factors = [abs(np.cos(angle)) for angle in coil_angles]
-        active_torque_factor = max(torque_factors)
+        torque_factors = sorted(torque_factors, reverse=True)[0:self.active_coils]
 
-        self.torque = max(0, 2 * self.radius * force_on_coil * active_torque_factor - self.friction_torque)
+        self.torque = max(0, self.n_turns * self.current * self.coil_area * self.B_mag * sum(torque_factors) - self.friction_torque)
 
         # update max variables
         self.max_torque = max(self.torque, self.max_torque)
