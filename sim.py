@@ -11,10 +11,10 @@ awg_to_diameter = {  # AWG to approximate diameter in meters
 
 n_turns = 12
 n_coils = 8
-length = 0.1
-B = np.array((0, 1, 0)) * 1.0  # 1 T magnetic field in the +y direction
+length = 0.1  # meters
+B = 1.0  # tesla
 inertia_moment = 0.5 * 2 * 0.2**2  # moment of 2 kg disk of radius 20cm
-input_voltage = 12
+input_voltage = 12  # volts
 wire_diameter = awg_to_diameter[24]
 
 wire_cross_section_area = PI * ((wire_diameter / 2) ** 2)
@@ -34,11 +34,10 @@ currents = []
 
 motor = Motor(n_turns=n_turns, n_coils=n_coils, length=length, B=B, inertia_moment=inertia_moment, input_voltage=input_voltage, wire_diameter=wire_diameter, friction_torque=0.1, stall=False)
 
-sample_rate = 1
-for i in range(int(2/dt)):
+for i in range(int(4/dt)):  # 4 simulated seconds
     motor.step()
-    if i % sample_rate != 0:
-        continue
+
+    # record relevant values
     torques.append(motor.torque)
     omegas.append(motor.omega)
     times.append(motor.t)
@@ -53,19 +52,19 @@ print("max current: %.2f A" % motor.max_current)
 print("stall torque: %.2f Nm" % motor.stall_torque)
 print("stall current: %.2f A" % motor.stall_current)
 
-# torque and power
+# torque and power (torque is in Ndm to make it fit on the graph better)
 ax1 = plt.gca()
 ax1.plot(omegas, np.array(torques) * 10, label='Torque (Ndm)', color='blue')
 ax1.plot(omegas, powers, label='Power out (W)', color='green')
 ax1.plot(omegas, currents, label='Current (A)', color='red')
 
-ax1.set_title(f'Motor Performance Curve ({n_coils} Coils)')
+ax1.set_title(f'Motor Performance Curves ({n_coils} Coils)')
 ax1.set_xlabel('Omega (rad/s)')
 ax1.set_ylabel('Torque (Ndm) / Power (W) / Current (A)')
 ax1.legend(loc='upper left')
 ax1.grid(True)
 
-# efficiency
+# efficiency (on a separate y-axis to make it fit better)
 ax2 = ax1.twinx()
 ax2.plot(omegas, efficiencies, label='Efficiency', color='purple', linestyle=':')
 ax2.set_ylabel('Efficiency')
