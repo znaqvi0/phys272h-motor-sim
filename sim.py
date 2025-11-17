@@ -9,7 +9,7 @@ awg_to_diameter = {  # AWG to approximate diameter in meters
     24: 0.5E-3
 }
 
-# -------------------------------------------------high-level parameters------------------------------------------------
+# ------------------------------------------------high-level parameters-------------------------------------------------
 n_turns = 12
 n_coils = 8
 length = 0.1  # meters
