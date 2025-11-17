@@ -9,6 +9,7 @@ awg_to_diameter = {  # AWG to approximate diameter in meters
     24: 0.5E-3
 }
 
+# -------------------------------------------------high-level parameters------------------------------------------------
 n_turns = 12
 n_coils = 8
 length = 0.1  # meters
@@ -16,6 +17,7 @@ B = 1.0  # tesla
 inertia_moment = 0.5 * 2 * 0.2**2  # moment of 2 kg disk of radius 20cm
 input_voltage = 12  # volts
 wire_diameter = awg_to_diameter[24]
+# ----------------------------------------------------------------------------------------------------------------------
 
 wire_cross_section_area = PI * ((wire_diameter / 2) ** 2)
 copper_volume = 4 * length * n_turns * n_coils * wire_cross_section_area
